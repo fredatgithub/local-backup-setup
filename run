@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+echo $0
+
+function notify {
+  echo $1
+  /usr/local/bin/terminal-notifier -title Backups -group backups.local -message "$1" -sender com.apple.backup.launcher > /dev/null
+}
+
+BACKUP_TARGET=$1
+[[ "$BACKUP_TARGET" == "" ]] && { notify 'Sync skipped, backup target not set'; exit 1; }
+
+ping -c 1 backups.local > /dev/null
+[[ $? -eq 0 ]] || { notify 'Sync skipped, cannot connect to backup server'; exit 1; }
+
+notify "Starting sync"
+rsync $HOME -azPh --delete --log-file=/var/log/backup/rsync.log --exclude-from=$HOME/.backup/excludes backups@backups.local:.sync/$BACKUP_TARGET/ > /dev/null
+
+if [[ $? -eq 0 ]]; then
+  notify "Sync complete"
+else
+  notify "Sync failed"
+fi
